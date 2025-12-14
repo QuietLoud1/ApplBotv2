@@ -1,0 +1,28 @@
+mechanics.db
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Project specific
+config.json
+secrets/
+database.db
