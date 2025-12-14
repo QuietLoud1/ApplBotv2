@@ -9,11 +9,14 @@ import xlsxwriter
 from PIL import Image
 import pytz
 import requests
+from config.config import Config, load_config
 # Конфигурация
 
-DB_PATH = 'mechanics.db'
-YADISK_TOKEN = 'y0__xCC2emUAhjUoDwg8bSpzxUw-6CpqQjovYIKr47ganT3_o9ZEgN3ElTwgQ'  # Замените на ваш токен
-YADISK_FOLDER = '/TelegramBotExports/'
+config: Config = load_config()
+
+DB_PATH = config.bot.database_path_for_excel
+YADISK_TOKEN = config.bot.yadisk_token  # Замените на ваш токен
+YADISK_FOLDER = config.bot.yadisk_folder_name
 EXCEL_FILENAME_PREFIX = 'applications_export_'
 TIMEZONE = pytz.timezone('Europe/Moscow')
 

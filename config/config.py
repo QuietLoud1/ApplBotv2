@@ -12,6 +12,9 @@ class BotSettings:
     admin_password: str
     manager_password: str
     mechanic_password: str
+    yadisk_token: str
+    yadisk_folder_name: str
+    database_path_for_excel: str
 
 
 @dataclass
@@ -93,7 +96,13 @@ def load_config(path: str | None = None) -> Config:
     logger.info("Configuration loaded successfully")
 
     return Config(
-        bot=BotSettings(token=token, admin_password=env("ADMIN_PASSWORD"), manager_password=env("MANAGER_PASSWORD"), mechanic_password=env("MECHANIC_PASSWORD")),
+        bot=BotSettings(token=token,
+                        admin_password=env("ADMIN_PASSWORD"), 
+                        manager_password=env("MANAGER_PASSWORD"), 
+                        mechanic_password=env("MECHANIC_PASSWORD"), 
+                        yadisk_token=env("YADISK_TOKEN"), 
+                        yadisk_folder_name=env("YADISK_FOLDER_NAME"), 
+                        database_path_for_excel=env("DATABASE_PATH_FOR_EXCEL")),
         db=db,
         redis=redis,
         log=logg_settings
