@@ -137,7 +137,7 @@ async def users_admin_button_handler(callback: CallbackQuery, state: FSMContext,
 
 @admin_functions.callback_query(F.data == "pick_mechanics", RoleFilter(role="admin"))
 async def pick_mechanic_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    await callback.message.edit_text("Выберите техника, с которым хотите взаимодействовать", reply_markup=await create_admins_keyboard_custom(role="manager", bot=bot))
+    await callback.message.edit_text("Выберите техника, с которым хотите взаимодействовать", reply_markup=await create_admins_keyboard_custom(role="mechanic", bot=bot))
 
 @admin_functions.callback_query(F.data.contains("mechanic_select_"), RoleFilter(role="admin"))
 async def mechanic_picked(callback: CallbackQuery, state: FSMContext, bot: Bot):
@@ -257,14 +257,14 @@ async def ban_user_handler(callback: CallbackQuery, state: FSMContext, bot: Bot)
     user_id = int(callback.data.split("_")[3])
     add_user_role(user_id=user_id, role="banned")
     await callback.message.edit_text("Вы успешно забанили пользователя!")
-    await callback.bot.send_message(chat_id=user_id, text="Вы были заблокированы в боте! Все ваши запросы в боте будут проигрорированы.\n\nЕсли есть вопросы обратитесь к администратору.")
+    await callback.bot.send_message(chat_id=user_id, text="😭 Вы были заблокированы в боте! Все ваши запросы в боте будут проигрорированы.\n\nЕсли есть вопросы обратитесь к администратору.")
     
 @admin_functions.callback_query(F.data.contains("unblock_picked_user_"), RoleFilter(role="admin") )
 async def unban_user_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
     user_id = int(callback.data.split("_")[3])
     add_user_role(user_id=user_id, role="default")
     await callback.message.edit_text("Вы успешно разблокировали пользователя!")
-    await callback.bot.send_message(chat_id=user_id, text="Вы были разблокированы в боте. Пройдем регистрацию еще раз. \n\Отправьте текстом пароль от администратора")
+    await callback.bot.send_message(chat_id=user_id, text="🎉 Вы были разблокированы в боте. Пройдем регистрацию еще раз. \nОтправьте текстом пароль от администратора")
     
 @admin_functions.callback_query(F.data.contains("close_menu_with_users"), RoleFilter(role="admin") )
 async def unban_user_handler(callback: CallbackQuery, state: FSMContext, bot: Bot):
