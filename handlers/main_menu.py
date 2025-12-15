@@ -25,20 +25,20 @@ main_menu.callback_query.middleware(RolesMiddleware())
 
 config : Config = load_config()
 
-@main_menu.message(F.text == "/get_id", F.chat.type == ChatType.SUPERGROUP, ~RoleFilter(role="banned"))
+@main_menu.message(F.text == "/get_id", F.chat.type == ChatType.SUPERGROUP)
 async def get_id_command_handler(message: Message, bot: Bot):
     chat_id = message.chat.id
     thread_id = message.message_thread_id
     await message.answer(text=f"Chat_id - {chat_id}")
     await message.answer(text=f"Chat_id - {thread_id}")
     
-@main_menu.message(F.text == "/starter_topic_message", F.chat.type == ChatType.SUPERGROUP, ~RoleFilter(role="banned"))
+@main_menu.message(F.text == "/starter_topic_message", F.chat.type == ChatType.SUPERGROUP)
 async def get_id_command_handler(message: Message, bot: Bot):
     await message.answer(text="Теперь для того, чтобы сообщить о неисправности, нужно воспользоваться специальным ботом! \nПароль для входа можно взять у администратора.", reply_markup=topic_message_keyboard())
     
     
     
-@main_menu.message(CommandStart(), RoleFilter(["admin", "manager", "mechanic"]), F.chat.type == ChatType.PRIVATE, ~RoleFilter(role="banned"))
+@main_menu.message(CommandStart(), RoleFilter(["admin", "manager", "mechanic"]), F.chat.type == ChatType.PRIVATE)
 async def start_command_handler(message: Message, state: FSMContext):
     user_role = get_user_role(message.from_user.id)
     user = message.from_user
@@ -81,7 +81,7 @@ async def start_command_handler(message: Message, state: FSMContext, bot: Bot):
     await state.clear()
     await message.answer(text=LEXICON["login_start_unauthorized"])
     
-@main_menu.message(F.text == "🚪 Выйти из системы", RoleFilter(role=["admin", "manager", "mechanic"]), F.chat.type == ChatType.PRIVATE, ~RoleFilter(role="banned"))
+@main_menu.message(F.text == "🚪 Выйти из системы", RoleFilter(role=["admin", "manager", "mechanic"]), F.chat.type == ChatType.PRIVATE)
 async def reauthorize(message: Message, state: FSMContext):
     user_id = message.from_user.id
     set_default_role_by_id(user_id)
@@ -120,12 +120,12 @@ async def login_handler(message: Message, state: FSMContext):
         last_name=user.last_name
     )
         
-@main_menu.message(Command("role"), F.chat.type == ChatType.PRIVATE, ~RoleFilter(role="banned"))
+@main_menu.message(Command("role"), F.chat.type == ChatType.PRIVATE)
 async def role_viewer(message: Message):
     user_role = get_user_role(message.from_user.id)
     await message.answer(f"Ваша роль: {user_role}")
 
-@main_menu.message(~F.text, StateFilter(default_state), RoleFilter(role="default"), F.chat.type == ChatType.PRIVATE, ~RoleFilter(role="banned"))
+@main_menu.message(~F.text, StateFilter(default_state), RoleFilter(role="default"), F.chat.type == ChatType.PRIVATE,)
 async def login_handler(message: Message):
     await message.answer(LEXICON["incorrect_content_type"])
 

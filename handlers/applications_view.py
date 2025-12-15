@@ -1,5 +1,5 @@
 from time import time
-from aiogram import Router, types
+from aiogram import Router, types, Bot
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery
 from lexicon.lexicon import LEXICON
@@ -8,7 +8,7 @@ from database.database import detach_application, add_user_role, set_default_rol
 from middlewares.role_checker import RolesMiddleware, require_role
 from aiogram import F
 from keyboards.reply_menu_keyboards import create_manager_keyboard,create_admin_keyboard,create_mechanic_keyboard
-from keyboards.inline_keyboards import pick_restaurant_keyboard, application_writing_complete
+from keyboards.inline_keyboards import pick_restaurant_keyboard, application_writing_complete, get_user_name
 import logging
 from aiogram.fsm.state import default_state
 from aiogram.filters import StateFilter
@@ -23,7 +23,8 @@ from database.database import (
     get_user_role,
     update_user_info,
     dict_of_topics,
-    get_restaurant_by_id
+    get_restaurant_by_id,
+    get_user_created_and_description_by_id
 )
 from middlewares.role_checker import RoleFilter
 from aiogram.types import ReplyKeyboardRemove
@@ -32,11 +33,10 @@ from typing import List, Dict, Optional
 from aiogram import types
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.enums import ChatType
-
 applications_view = Router()
 
 @applications_view.callback_query(F.data.startswith("picking_application_") | F.data.startswith("skip_pending_application_"), RoleFilter(role=["mechanic", "admin"]))
-async def handle_application_response(callback: CallbackQuery, state: FSMContext):
+async def handle_application_response(callback: CallbackQuery, state: FSMContext, bot: Bot):
     if callback.data.startswith("picking_application_"):
         await callback.answer()
         await callback.message.edit_reply_markup(reply_markup=None)
@@ -47,6 +47,14 @@ async def handle_application_response(callback: CallbackQuery, state: FSMContext
             return
         user_id = callback.from_user.id
         accept_application(application_id=application_id, mechanic_id=user_id)
+        dict_for_notification = get_user_created_and_description_by_id(application_id=application_id)
+        text = dict_for_notification['description']
+        cropped_text = text[:15] + "..."
+        mechanic_id = dict_for_notification['mechanic_id']
+        user_accepted = await get_user_name(bot=bot,user_id=mechanic_id)
+        await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
+                                  ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>Была принята в работу 👨🏼‍🔧{user_accepted}</b>
+                                  """)
         await callback.message.answer(text=LEXICON["mechanic_picked_application"])        
     elif callback.data.startswith("skip_pending_application_"):
         await callback.message.delete()
@@ -177,17 +185,16 @@ async def show_application(
 🔧 Текст заявки: {app['description']}
 👷🏼‍♂️ Техник, принявший в работу: {mechanic_name}\n
 
-├ Дата подачи заявки: {app['date_created']}
-└ Дата принятия заявки в работу: {app['date_accepted']}\n\n"""
+Подача: {app['date_created']}
+Принята: {app['date_accepted']}\n\n"""
     else:  # pending
         text = f"""➖ 🔨 Заявка ➖
-🟡 Статус: еще не принята
+🔴 Статус: еще не принята
 🎱 № {app['id']}
 💁🏼‍♂️ Cоздал заявку: {creator_name}
 
 🍽: {app['restaurant']}
 🔧 Текст заявки: {app['description']}
-
 📅 Создана: {app['date_created']}"""
     
     # Создаем клавиатуру
@@ -418,13 +425,22 @@ async def handle_complete(callback: CallbackQuery, bot):
         # Удаляем заявку из состояния
         pagination_manager.remove_application(user_id, application_id)
         restaurant = get_restaurant_by_id(application_id)
-        thread_id = dict_of_topics['restaurant']
+        thread_id = dict_of_topics[restaurant]
         # Проверяем есть ли еще заявки
         state = pagination_manager.get_state(user_id)
+        dict_for_notification = get_user_created_and_description_by_id(application_id=application_id)
+        text = dict_for_notification['description']
+        cropped_text = text[:15] + "..."
+        mechanic_id = dict_for_notification['mechanic_id']
+        user_accepted = await get_user_name(bot=bot,user_id=mechanic_id)
+        await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
+                                  ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>✔ Была выполнена 👨🏼‍🔧{user_accepted}</b>
+                                  """)
+        
         if has_photo:
             original_text = callback.message.caption
             lines = original_text.split('\n')
-            new_lines = ["🟢 ВЫПОЛНЕННАЯ ЗАЯВКА", *lines[2:11]]
+            new_lines = ["🟢 ВЫПОЛНЕННАЯ ЗАЯВКА", *lines[2:12]]
             modified_text = '\n'.join(new_lines)
             await callback.message.bot.send_photo(
                             chat_id=-1003420551552,
@@ -531,7 +547,14 @@ async def handle_accept(callback: CallbackQuery, bot):
         
         # Проверяем есть ли еще заявки
         state = pagination_manager.get_state(user_id)
-        
+        dict_for_notification = get_user_created_and_description_by_id(application_id=application_id)
+        text = dict_for_notification['description']
+        cropped_text = text[:15] + "..."
+        mechanic_id = dict_for_notification['mechanic_id']
+        user_accepted = await get_user_name(bot=bot,user_id=mechanic_id)
+        await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
+                                  ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>👨🏼‍🔧 Была принята в работу {user_accepted}</b>
+                                  """)
         if not state or not state.applications:
             await callback.message.delete()
             await bot.send_message(

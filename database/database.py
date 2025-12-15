@@ -282,6 +282,35 @@ def get_application_by_id(application_id: int) -> Optional[Dict[str, Any]]:
     except sqlite3.Error as e:
         logging.getLogger(__name__).error(f"Ошибка при получении заявки: {e}")
         return None
+    
+def get_user_created_and_description_by_id(application_id: int) -> Optional[Dict[str, Any]]:
+    """
+    Получить заявку по ID
+    
+    Args:
+        application_id: ID заявки
+        
+    Returns:
+        Словарь с данными заявки или None, если заявка не найдена
+    """
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT user_created_id, description, mechanic_id
+                FROM applications 
+                WHERE id = ?
+            """, (application_id,))
+            
+            row = cur.fetchone()
+            if row:
+                # Преобразуем строку результата в словарь
+                columns = ['user_created_id', 'description', 'mechanic_id']
+                return dict(zip(columns, row))
+            return None
+    except sqlite3.Error as e:
+        logging.getLogger(__name__).error(f"Ошибка при получении заявки: {e}")
+        return None
 
 
 def get_restaurant_by_id(application_id: int) -> Optional[str]:

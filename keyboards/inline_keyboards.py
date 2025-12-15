@@ -113,16 +113,6 @@ def users_buttons_picker():
 _user_names_cache = {}
 
 async def get_user_name(bot: Bot, user_id: int) -> str:
-    """
-    Получает имя админа по его ID
-    
-    Args:
-        bot: Экземпляр бота
-        user_id: ID админа
-    
-    Returns:
-        Строка с именем админа в формате "Имя Фамилия"
-    """
     # Проверяем кэш
     if user_id in _user_names_cache:
         return _user_names_cache[user_id]
