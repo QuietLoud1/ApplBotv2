@@ -15,6 +15,7 @@ from states.states import MenuStates
 from aiogram.fsm.context import FSMContext
 from database.database import restaurants
 from aiogram.enums import ChatType
+from middlewares.role_checker import RoleFilter
 
 notifications = Router()
 

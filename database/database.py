@@ -185,7 +185,7 @@ def get_admin_ids():
         admin_ids = [row['id'] for row in cur.fetchall()]
         return admin_ids
 
-def get_manager_ids():
+def get_all_user_ids(role: str):
     """
     Получает ID всех пользователей с ролью 'mechanic' из БД
     
@@ -194,7 +194,7 @@ def get_manager_ids():
     """
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM accounts WHERE role = 'manager'")
+        cur.execute(f"SELECT id FROM accounts WHERE role = '{role}'")
         
         # Создаем список из ID
         manager_ids = [row['id'] for row in cur.fetchall()]
