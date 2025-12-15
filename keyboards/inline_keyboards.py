@@ -40,9 +40,9 @@ def admin_panel_menu_keyboard() -> InlineKeyboardMarkup:
     
     kb_builder.row(
         InlineKeyboardButton(text="📑 Статистика", callback_data="statistics_admin_button"),
-        InlineKeyboardButton(text="💻 Excel", callback_data="excel_menu_button")
+        InlineKeyboardButton(text="💻 Excel", callback_data="excel_menu_button"),
         # InlineKeyboardButton(text="👷🏼‍♀️ История заявок", callback_data="history_admin_button"),
-        # InlineKeyboardButton(text="👷🏼 Список участников", callback_data="statistics_admin_button"),
+        InlineKeyboardButton(text="👷🏼 Список участников", callback_data="statistics_admin_button"),
     )
     kb_builder.adjust(2)
     kb_builder.row(InlineKeyboardButton(text="Назад", callback_data="back_to_menu_from_admin_panel"))
@@ -88,6 +88,6 @@ def topic_message_keyboard():
     kb_builder = InlineKeyboardBuilder()
     
     kb_builder.row(
-        InlineKeyboardButton(text="Перейти в бота", url="tg://resolve?domain=dasasjkdaskdkaebot")
+        InlineKeyboardButton(text="Оформить заявку", url="tg://resolve?domain=dasasjkdaskdkaebot")
     )
     return kb_builder.as_markup()

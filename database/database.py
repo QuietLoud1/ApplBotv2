@@ -3,10 +3,16 @@ import logging
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
+from config.config import Config,load_config
 
+
+config = load_config()
 # Конфигурация БД
-DB_PATH = 'mechanics.db'  # укажите путь к вашей БД
+DB_PATH = config.bot.database_path_for_excel  # укажите путь к вашей БД
 restaurants = ["Duo", "Tartarbar","Азия", "Харвест", "Общая заявка","Реборн", "Француз","Перемена"]
+dict_of_topics = {
+    "Duo" : "71", "Tartarbar" : "73", "Азия" : "22", "Харвест" : "3", "Общая заявка" : "3", "Реборн" : "77", "Француз" : "80", "Перемена" : "82"
+}
 
 @contextmanager
 def get_db_connection():
@@ -277,6 +283,26 @@ def get_application_by_id(application_id: int) -> Optional[Dict[str, Any]]:
         logging.getLogger(__name__).error(f"Ошибка при получении заявки: {e}")
         return None
 
+
+def get_restaurant_by_id(application_id: int) -> Optional[str]:
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT restaurant
+                FROM applications 
+                WHERE id = ?
+            """, (application_id,))
+            
+            row = cur.fetchone()
+            if row:
+                restaurant = row[0]  # Извлекаем значение из первой колонки
+                return restaurant
+            return None
+    except sqlite3.Error as e:
+        logging.getLogger(__name__).error(f"Ошибка при получении ресторана: {e}")
+        return None
+    
 # 2. Удалить заявку по id
 def delete_application(application_id: int) -> bool:
     """

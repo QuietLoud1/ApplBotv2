@@ -3,7 +3,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery
 from lexicon.lexicon import LEXICON
 from config.config import Config, load_config
-from database.database import add_user_role, get_user_role, create_application
+from database.database import add_user_role, get_user_role, create_application, dict_of_topics
 from middlewares.role_checker import RolesMiddleware, require_role, RoleFilter
 from aiogram import F
 from keyboards.reply_menu_keyboards import create_manager_keyboard,create_admin_keyboard,create_mechanic_keyboard
@@ -14,7 +14,7 @@ from aiogram.filters import StateFilter
 from states.states import MenuStates
 from aiogram.fsm.context import FSMContext
 from database.database import restaurants
-from database.database import get_mechanic_ids, get_admin_ids, update_user_info
+from database.database import get_mechanic_ids, get_admin_ids, update_user_info, get_restaurant_by_id
 from aiogram.methods import SendMessage
 from aiogram import Bot
 from aiogram.enums import ChatType
@@ -77,6 +77,7 @@ async def application_complition_ended(callback: CallbackQuery, state: FSMContex
             return
         await callback.message.answer(text="✅ Заявка заполнена и отправлена техникам")
         try:
+            thread_id = dict_of_topics[restaurant]
             mess = f"""🎇 Новая заявка!
                         
 ID заявки: {application_id}
@@ -88,13 +89,13 @@ ID заявки: {application_id}
                 await callback.message.bot.send_photo(
                             photo=file_id if file_id else photo_id,
                             chat_id=-1003420551552,
-                            message_thread_id=3,
+                            message_thread_id=thread_id,
                             caption=mess
                         )
             else:
                 await callback.message.bot.send_message(
                             chat_id=-1003420551552,
-                            message_thread_id=3,
+                            message_thread_id=thread_id,
                             text=mess
                         )
         except Exception as e:
@@ -102,13 +103,12 @@ ID заявки: {application_id}
         for user_notified_id in admin_and_mechanic_ids:
             try:
                 if photo_id and file_id:
-                    mess = f"""🎇 Новая заявка!
-                        
+                    mess = f"""Заявка в работе\n
 ID заявки: {application_id}
-От: @{username}
-Ресторан: {restaurant}
+От: {username}
+🥩 {restaurant}
 
-Проблема: {application_text[:500]}""" 
+📑 {application_text[:500]}""" 
                     # Отправляем с фото
                     await callback.message.bot.send_photo(
                         chat_id=int(user_notified_id),
@@ -141,7 +141,7 @@ ID заявки: {application_id}
     await state.set_state(MenuStates.main_menu)
         
         
-@application_writing.message(F.text.contains("Отправить заявку"), StateFilter(MenuStates.main_menu), RoleFilter(role=["admin", "manager"]), F.chat.type == ChatType.PRIVATE)
+@application_writing.message(F.text.contains("Отправить заявку"), RoleFilter(role=["admin", "manager"]), F.chat.type == ChatType.PRIVATE)
 async def send_request_message_handler(message: Message, state: FSMContext):
     await message.answer(
         text=LEXICON["request_pick_a_restaurant"],

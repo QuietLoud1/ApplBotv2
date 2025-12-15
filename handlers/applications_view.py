@@ -21,7 +21,9 @@ from database.database import (
     delete_application,
     update_application_mechanic,
     get_user_role,
-    update_user_info
+    update_user_info,
+    dict_of_topics,
+    get_restaurant_by_id
 )
 from middlewares.role_checker import RoleFilter
 from aiogram.types import ReplyKeyboardRemove
@@ -167,7 +169,6 @@ async def show_application(
     
     if state.application_type == 'in_work':
         mechanic_name = await get_username(bot, app['mechanic_id']) if app['mechanic_id'] else "Не назначен"
-        
         text = f"""➖ 🔨 Заявка ➖
 🟡 Статус: В работе
 🎱 № {app['id']}
@@ -416,17 +417,18 @@ async def handle_complete(callback: CallbackQuery, bot):
         text_of_application = callback.message.text
         # Удаляем заявку из состояния
         pagination_manager.remove_application(user_id, application_id)
-        
+        restaurant = get_restaurant_by_id(application_id)
+        thread_id = dict_of_topics['restaurant']
         # Проверяем есть ли еще заявки
         state = pagination_manager.get_state(user_id)
         if has_photo:
             original_text = callback.message.caption
             lines = original_text.split('\n')
-            new_lines = ["➖ 🔨 Заявка ➖", f"🟢 Статус: выполнена", *lines[2:11]]
+            new_lines = ["🟢 ВЫПОЛНЕННАЯ ЗАЯВКА", *lines[2:11]]
             modified_text = '\n'.join(new_lines)
             await callback.message.bot.send_photo(
                             chat_id=-1003420551552,
-                            message_thread_id=22,
+                            message_thread_id=thread_id,
                             caption=modified_text,
                             photo=callback.message.photo[-1].file_id
                         )
@@ -438,7 +440,7 @@ async def handle_complete(callback: CallbackQuery, bot):
             modified_text = '\n'.join(new_lines)
             await callback.message.bot.send_message(
                             chat_id=-1003420551552,
-                            message_thread_id=22,
+                            message_thread_id=thread_id,
                             text=modified_text
                         )
         
