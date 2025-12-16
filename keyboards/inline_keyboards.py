@@ -19,8 +19,8 @@ def application_writing_complete() -> InlineKeyboardMarkup:
     kb_builder = InlineKeyboardBuilder()
     
     kb_builder.row(
-        InlineKeyboardButton(text="Продолжить", callback_data="completed_writing_application"),
-        InlineKeyboardButton(text="Отменить", callback_data="cancelled_writing_application")
+        InlineKeyboardButton(text="📩 Отправить", callback_data="completed_writing_application"),
+        InlineKeyboardButton(text="🔙 Отменить", callback_data="cancelled_writing_application")
     )
     
     return kb_builder.as_markup()

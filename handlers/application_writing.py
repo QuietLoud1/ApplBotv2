@@ -141,7 +141,7 @@ ID заявки: {application_id}
     await state.set_state(MenuStates.main_menu)
         
         
-@application_writing.message(F.text.contains("Отправить заявку"), RoleFilter(role=["admin", "manager"]), F.chat.type == ChatType.PRIVATE)
+@application_writing.message(F.text.contains(LEXICON['send_request']), RoleFilter(role=["admin", "manager"]), F.chat.type == ChatType.PRIVATE)
 async def send_request_message_handler(message: Message, state: FSMContext):
     await message.answer(
         text=LEXICON["request_pick_a_restaurant"],

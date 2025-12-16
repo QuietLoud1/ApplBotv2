@@ -357,19 +357,26 @@ async def handle_prev(callback: CallbackQuery, bot):
         await callback.answer("Сессия истекла. Выберите заявки заново.")
         return
     
+    # Сохраняем chat_id перед удалением сообщения
+    chat_id = callback.message.chat.id
+    
+    # Удаляем старое сообщение
+    try:
+        await callback.message.delete()
+    except Exception as e:
+        logging.error(f"Ошибка при удалении сообщения: {e}")
+    
     # Уменьшаем индекс
-    old_index = state.current_index
     pagination_manager.update_index(user_id, -1)
     
-    # Проверяем, изменился ли индекс
-    new_state = pagination_manager.get_state(user_id)
-    if new_state and new_state.current_index != old_index:
-        # Обновляем сообщение только если индекс изменился
-        await show_application(
-            bot, user_id, callback.message.chat.id,
-            message_id=callback.message.message_id,
-            edit=True
-        )
+    # Проверяем есть ли еще заявки
+    state = pagination_manager.get_state(user_id)
+    if state and state.applications:
+        # Отправляем новую заявку
+        await show_application(bot, user_id, chat_id, edit=False)
+    else:
+        # Если нет заявок, отправляем сообщение
+        await bot.send_message(chat_id, "Нет заявок для отображения.")
     
     await callback.answer()
 
@@ -384,19 +391,27 @@ async def handle_next(callback: CallbackQuery, bot):
         await callback.answer("Сессия истекла. Выберите заявки заново.")
         return
     
+    # Сохраняем chat_id перед удалением сообщения
+    chat_id = callback.message.chat.id
+    
+    # Удаляем старое сообщение
+    try:
+        await callback.message.delete()
+    except Exception as e:
+        logging.error(f"Ошибка при удалении сообщения: {e}")
+    
     # Увеличиваем индекс
-    old_index = state.current_index
     pagination_manager.update_index(user_id, 1)
     
-    # Проверяем, изменился ли индекс
-    new_state = pagination_manager.get_state(user_id)
-    if new_state and new_state.current_index != old_index:
-        # Обновляем сообщение только если индекс изменился
-        await show_application(
-            bot, user_id, callback.message.chat.id,
-            message_id=callback.message.message_id,
-            edit=True
-        )
+    # Проверяем есть ли еще заявки
+    state = pagination_manager.get_state(user_id)
+    if state and state.applications:
+        # Отправляем новую заявку
+        await show_application(bot, user_id, chat_id, edit=False)
+    else:
+        # Если нет заявок, отправляем сообщение
+        await bot.send_message(chat_id, "Нет заявок для отображения.")
+    
     await callback.answer()
 
 @applications_view.callback_query(F.data == "page_info", RoleFilter(role=["mechanic", "admin"]))
@@ -472,7 +487,7 @@ async def handle_complete(callback: CallbackQuery, bot):
             await show_application(
                 bot, user_id, callback.message.chat.id,
                 message_id=callback.message.message_id,
-                edit=True
+                edit=False
             )
             await callback.answer("Заявка отмечена как выполненная!")
 
@@ -521,7 +536,7 @@ async def handle_delete(callback: CallbackQuery, bot):
             await show_application(
                 bot, user_id, callback.message.chat.id,
                 message_id=callback.message.message_id,
-                edit=True
+                edit=False
             )
             await callback.answer("Заявка удалена!")
     else:
@@ -567,7 +582,7 @@ async def handle_accept(callback: CallbackQuery, bot):
             await show_application(
                 bot, user_id, callback.message.chat.id,
                 message_id=callback.message.message_id,
-                edit=True
+                edit=False
             )
             await callback.answer("Заявка принята в работу!")
     else:
