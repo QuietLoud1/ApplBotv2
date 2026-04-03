@@ -37,25 +37,34 @@ async def main():
     logger.info("Starting bot")
 
     proxy_url = config.bot.proxy_url
-    auth = BasicAuth(login=config.bot.proxy_login, password=config.bot.proxy_password)
-    session = AiohttpSession(proxy=(proxy_url, auth))
+    if proxy_url:
+        # Создаём auth только если есть прокси
+        auth = BasicAuth(login=config.bot.proxy_login, password=config.bot.proxy_password)
+        session = AiohttpSession(proxy=(proxy_url, auth))
+        logger.info(f"Using proxy: {proxy_url}")
+    else:
+        session = AiohttpSession()
+        logger.info("No proxy configured")
+
     bot = Bot(
         token=config.bot.token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
         session=session
     )
+    
+    # Redis - можно тоже вынести в config, но оставим localhost для примера
     redis = Redis(host='localhost')
     storage = RedisStorage(redis=redis)
     dp = Dispatcher(storage=storage)
-    
-    # Правильная регистрация обработчика startup
+
     dp.startup.register(on_startup)
 
-    dp.include_router(router=main_menu)
-    dp.include_router(router=notifications)
-    dp.include_router(router=admin_functions)
-    dp.include_router(router=application_writing)
-    dp.include_router(router=applications_view)
+    dp.include_router(main_menu)
+    dp.include_router(notifications)
+    dp.include_router(admin_functions)
+    dp.include_router(application_writing)
+    dp.include_router(applications_view)
+
     await dp.start_polling(bot)
     
 

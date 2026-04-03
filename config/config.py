@@ -99,19 +99,19 @@ def load_config(path: str | None = None) -> Config:
     logger.info("Configuration loaded successfully")
 
     return Config(
-        bot=BotSettings(token=token,
-                        admin_password=env("ADMIN_PASSWORD"), 
-                        manager_password=env("MANAGER_PASSWORD"), 
-                        mechanic_password=env("MECHANIC_PASSWORD"), 
-                        yadisk_token=env("YADISK_TOKEN"), 
-                        yadisk_folder_name=env("YADISK_FOLDER_NAME"), 
-                        database_path_for_excel=env("DATABASE_PATH_FOR_EXCEL"),
-                        proxy_url=env("PROXY_URL"),
-                        proxy_password=env("PROXY_PASSWORD"),
-                        proxy_login=env("PROXY_LOGIN")
-                        ),
-    
+        bot=BotSettings(
+            token=token,
+            admin_password=env("ADMIN_PASSWORD"), 
+            manager_password=env("MANAGER_PASSWORD"), 
+            mechanic_password=env("MECHANIC_PASSWORD"), 
+            yadisk_token=env("YADISK_TOKEN"), 
+            yadisk_folder_name=env("YADISK_FOLDER_NAME"), 
+            database_path_for_excel=env("DATABASE_PATH_FOR_EXCEL"),
+            proxy_url=env("PROXY_URL", default=""),           # <-- добавить default
+            proxy_password=env("PROXY_PASSWORD", default=""), # <-- добавить default
+            proxy_login=env("PROXY_LOGIN", default="")        # <-- добавить default
+        ),
         db=db,
         redis=redis,
         log=logg_settings
-    )
+)
