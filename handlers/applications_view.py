@@ -33,6 +33,7 @@ from typing import List, Dict, Optional
 from aiogram import types
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.enums import ChatType
+from database.google_service import change_application_status
 applications_view = Router()
 
 @applications_view.callback_query(F.data.startswith("picking_application_") | F.data.startswith("skip_pending_application_"), RoleFilter(role=["mechanic", "admin"]))
@@ -52,9 +53,12 @@ async def handle_application_response(callback: CallbackQuery, state: FSMContext
         cropped_text = text[:15] + "..."
         mechanic_id = dict_for_notification['mechanic_id']
         user_accepted = await get_user_name(bot=bot,user_id=mechanic_id)
-        await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
-                                  ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>Была принята в работу 👨🏼‍🔧{user_accepted}</b>
-                                  """)
+        try:
+            await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
+                                    ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>Была принята в работу 👨🏼‍🔧{user_accepted}</b>
+                                    """)
+        except Exception as e:
+            logging.error(f"Не удалось отправить уведомление пользователю {dict_for_notification['user_created_id']}: {e}")
         await callback.message.answer(text=LEXICON["mechanic_picked_application"])        
     elif callback.data.startswith("skip_pending_application_"):
         await callback.message.delete()
@@ -173,29 +177,30 @@ async def show_application(
     app = state.applications[state.current_index]
     
     # Получаем имена пользователей
-    creator_name = await get_username(bot, app['user_created_id'])
+    try:
+        creator_name = await get_username(bot, app['user_created_id']) or "Нет в боте"
+    except Exception:
+        creator_name = "Нет в боте"
     
     if state.application_type == 'in_work':
         mechanic_name = await get_username(bot, app['mechanic_id']) if app['mechanic_id'] else "Не назначен"
-        text = f"""➖ 🔨 Заявка ➖
-🟡 Статус: В работе
-🎱 № {app['id']}
+        text = f"""➖ 🔨 Заявка #{app['id']} ➖
+🟡 В работе
 💁🏼‍♂️ Создал заявку: {creator_name}
 🍽: {app['restaurant']}\n
-🔧 Текст заявки: {app['description']}
+🔧 {app['description']}
 👷🏼‍♂️ Техник, принявший в работу: {mechanic_name}\n
 
 Подача: {app['date_created']}
 Принята: {app['date_accepted']}\n\n"""
     else:  # pending
-        text = f"""➖ 🔨 Заявка ➖
-🔴 Статус: еще не принята
-🎱 № {app['id']}
+        text = f"""➖ 🔨 Заявка #{app['id']} ➖
+🔴 Еще не принята
 💁🏼‍♂️ Cоздал заявку: {creator_name}
 
 🍽: {app['restaurant']}
-🔧 Текст заявки: {app['description']}
-📅 Создана: {app['date_created']}"""
+🔧 {app['description']}
+📅 {app['date_created']}"""
     
     # Создаем клавиатуру
     keyboard = create_pagination_keyboard(
@@ -440,7 +445,7 @@ async def handle_complete(callback: CallbackQuery, bot):
         # Удаляем заявку из состояния
         pagination_manager.remove_application(user_id, application_id)
         restaurant = get_restaurant_by_id(application_id)
-        thread_id = dict_of_topics[restaurant]
+        # thread_id = dict_of_topics[restaurant]
         # Проверяем есть ли еще заявки
         state = pagination_manager.get_state(user_id)
         dict_for_notification = get_user_created_and_description_by_id(application_id=application_id)
@@ -448,32 +453,38 @@ async def handle_complete(callback: CallbackQuery, bot):
         cropped_text = text[:15] + "..."
         mechanic_id = dict_for_notification['mechanic_id']
         user_accepted = await get_user_name(bot=bot,user_id=mechanic_id)
-        await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
-                                  ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>✔ Была выполнена 👨🏼‍🔧{user_accepted}</b>
-                                  """)
-        
-        if has_photo:
-            original_text = callback.message.caption
-            lines = original_text.split('\n')
-            new_lines = ["🟢 ВЫПОЛНЕННАЯ ЗАЯВКА", *lines[2:12]]
-            modified_text = '\n'.join(new_lines)
-            await callback.message.bot.send_photo(
-                            chat_id=-1003420551552,
-                            message_thread_id=thread_id,
-                            caption=modified_text,
-                            photo=callback.message.photo[-1].file_id
-                        )
-        else:
-            original_text = callback.message.text
-            # Текстовое сообщение
-            lines = original_text.split('\n')
-            new_lines = ["➖ 🔨 Заявка ➖", f"🟢 Статус: выполнена", *lines[2:11]]
-            modified_text = '\n'.join(new_lines)
-            await callback.message.bot.send_message(
-                            chat_id=-1003420551552,
-                            message_thread_id=thread_id,
-                            text=modified_text
-                        )
+
+        await change_application_status(restaurant=restaurant, application_id=application_id, new_status=f"Выполнена {user_accepted}")
+
+        try:
+            await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
+                                    ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>✔ Была выполнена 👨🏼‍🔧{user_accepted}</b>
+                                    """)
+        except Exception as e:
+            logging.error(f"Не удалось отправить уведомление пользователю {dict_for_notification['user_created_id']}: {e}")
+        # Пока выключил оповещение в беседе о выполненной заявке.
+        # if has_photo:
+        #     original_text = callback.message.caption
+        #     lines = original_text.split('\n')
+        #     new_lines = ["🟢 ВЫПОЛНЕННАЯ ЗАЯВКА", *lines[2:12]]
+        #     modified_text = '\n'.join(new_lines)
+        #     await callback.message.bot.send_photo(
+        #                     chat_id=-1003420551552,
+        #                     message_thread_id=thread_id,
+        #                     caption=modified_text,
+        #                     photo=callback.message.photo[-1].file_id
+        #                 )
+        # else:
+        #     original_text = callback.message.text
+        #     # Текстовое сообщение
+        #     lines = original_text.split('\n')
+        #     new_lines = ["➖ 🔨 Заявка ➖", f"🟢 Статус: выполнена", *lines[2:11]]
+        #     modified_text = '\n'.join(new_lines)
+        #     await callback.message.bot.send_message(
+        #                     chat_id=-1003420551552,
+        #                     message_thread_id=thread_id,
+        #                     text=modified_text
+        #                 )
         
         if not state or not state.applications:
             await callback.message.delete()
@@ -483,6 +494,7 @@ async def handle_complete(callback: CallbackQuery, bot):
             )
             pagination_manager.clear_state(user_id)
         else:
+            await callback.message.delete()
             # Обновляем сообщение
             await show_application(
                 bot, user_id, callback.message.chat.id,
@@ -517,7 +529,8 @@ async def handle_delete(callback: CallbackQuery, bot):
     if success:
         # Удаляем заявку из состояния
         pagination_manager.remove_application(user_id, application_id)
-        
+        restaurant = get_restaurant_by_id(application_id)
+        await change_application_status(restaurant=restaurant, application_id=application_id, new_status=f"Отклонена администратором")
         # Проверяем есть ли еще заявки
         state = pagination_manager.get_state(user_id)
         
@@ -532,6 +545,7 @@ async def handle_delete(callback: CallbackQuery, bot):
             await bot.send_message(callback.message.chat.id, text)
             pagination_manager.clear_state(user_id)
         else:
+            await callback.message.delete()
             # Обновляем сообщение
             await show_application(
                 bot, user_id, callback.message.chat.id,
@@ -544,6 +558,9 @@ async def handle_delete(callback: CallbackQuery, bot):
 
 @applications_view.callback_query(F.data.startswith("accept_"), RoleFilter(role=["mechanic", "admin"]))
 async def handle_accept(callback: CallbackQuery, bot):
+    callback.message.edit_caption("Обработка.")
+    callback.message.edit_caption("Обработка..")
+    callback.message.edit_caption("Обработка...")
     """Обработка кнопки "Принять заявку" """
     user_id = callback.from_user.id
     application_id = int(callback.data.replace("accept_", ""))
@@ -567,9 +584,14 @@ async def handle_accept(callback: CallbackQuery, bot):
         cropped_text = text[:15] + "..."
         mechanic_id = dict_for_notification['mechanic_id']
         user_accepted = await get_user_name(bot=bot,user_id=mechanic_id)
-        await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
-                                  ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>👨🏼‍🔧 Была принята в работу {user_accepted}</b>
-                                  """)
+        restaurant = get_restaurant_by_id(application_id)
+        await change_application_status(restaurant=restaurant, application_id=application_id, new_status=f"Принята техником {user_accepted}")
+        try:
+            await callback.bot.send_message(chat_id=dict_for_notification['user_created_id'], text=f"""
+                                    ❗ Ваша заявка с текстом: {cropped_text}\n\n<b>👨🏼‍🔧 Была принята в работу {user_accepted}</b>
+                                    """)
+        except Exception as e:
+            logging.error(f"Не удалось отправить уведомление пользователю {dict_for_notification['user_created_id']}: {e}")
         if not state or not state.applications:
             await callback.message.delete()
             await bot.send_message(
@@ -579,6 +601,7 @@ async def handle_accept(callback: CallbackQuery, bot):
             pagination_manager.clear_state(user_id)
         else:
             # Обновляем сообщение
+            await callback.message.delete()
             await show_application(
                 bot, user_id, callback.message.chat.id,
                 message_id=callback.message.message_id,

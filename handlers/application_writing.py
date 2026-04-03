@@ -18,124 +18,105 @@ from database.database import get_mechanic_ids, get_admin_ids, update_user_info,
 from aiogram.methods import SendMessage
 from aiogram import Bot
 from aiogram.enums import ChatType
+from database.google_service import validate_claim, save_claim
+
+
+logger = logging.getLogger(__name__)
 
 application_writing = Router()
-@application_writing.callback_query(F.data.in_("completed_writing_application") 
-                                    | F.data.in_("cancelled_writing_application"), 
-                                    StateFilter(MenuStates.report_a_problem_with_text), 
-                                    RoleFilter(role=["admin", "manager"]),
+@application_writing.callback_query(
+    F.data.in_({"completed_writing_application", "cancelled_writing_application"}),
+    StateFilter(MenuStates.report_a_problem_with_text),
+    RoleFilter(role=["admin", "manager"]),
 )
 async def application_complition_ended(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    await callback.message.edit_text(
+        "⏳ Обрабатываю заявку, пожалуйста, подождите...",
+        reply_markup=None  # убираем клавиатуру полностью
+    )
     if callback.data == "completed_writing_application":
         await callback.answer()
         data = await state.get_data()
         
         texts = data.get("texts_list", [])
-        photo_id = data.get("photo_id")  # Может быть None!
+        photo_id = data.get("photo_id")
         username = data.get("username", "Не указан")
-        restaurant = data.get("restaurant", "Не указан")  # Получаем ресторан из состояния
-        application_text = f"{'\n'.join(texts) if texts else 'Нет текста'}"
+        restaurant = data.get("restaurant", "Не указан")
+        application_text = "\n".join(texts) if texts else "Заявка отправлена без текста"
+        
         mechanic_ids = get_mechanic_ids()
         admin_ids = get_admin_ids()
         
         admin_and_mechanic_ids = mechanic_ids + admin_ids
         
+        # Загрузка фото (если есть)
         image_data = None
         file_id = None
-        
-        # ПРОВЕРЯЕМ ЕСТЬ ЛИ PHOTO_ID ПЕРЕД СКАЧИВАНИЕМ
         if photo_id:
             try:
                 file = await bot.get_file(photo_id)
                 image_bytes = await bot.download_file(file.file_path)
-                
-                if hasattr(image_bytes, 'read'):
-                    image_data = image_bytes.read()
-                else:
-                    image_data = image_bytes
-                    
+                image_data = image_bytes.read() if hasattr(image_bytes, 'read') else image_bytes
                 file_id = photo_id
-                
             except Exception as e:
                 logging.error(f"Ошибка загрузки фото: {e}")
-                await callback.message.answer("⚠️ Фото не удалось загрузить, заявка создана без фото")
+                await callback.message.answer("⚠️ Фото не загружено, заявка без фото")
         
-        # Создаем заявку (с фото или без) - ТЕПЕРЬ С РЕСТОРАНОМ
-        user_id = callback.from_user.id
+        # Создание заявки в БД
         application_id = create_application(
-            user_created_id=str(user_id), 
-            description=application_text,  # Убрал обрезку до 50 символов, чтобы сохранялся полный текст
-            restaurant=restaurant,  # Добавляем ресторан
-            image_data=image_data, 
+            user_created_id=str(callback.from_user.id),
+            description=application_text,
+            restaurant=restaurant,
+            image_data=image_data,
             file_id=file_id,
         )
         
-        if not application_id:
-            await callback.message.answer("❌ Ошибка при создании заявки")
-            await state.clear()
-            await state.set_state(MenuStates.main_menu)
-            return
-        await callback.message.answer(text="✅ Заявка заполнена и отправлена техникам")
-        try:
-            thread_id = dict_of_topics[restaurant]
-            mess = f"""🎇 Новая заявка!
-                        
-ID заявки: {application_id}
-От: @{username}
-Ресторан: {restaurant}
-
-Проблема: {application_text[:500]}""" 
-            if photo_id and file_id:
-                await callback.message.bot.send_photo(
-                            photo=file_id if file_id else photo_id,
-                            chat_id=-1003420551552,
-                            message_thread_id=thread_id,
-                            caption=mess
-                        )
-            else:
-                await callback.message.bot.send_message(
-                            chat_id=-1003420551552,
-                            message_thread_id=thread_id,
-                            text=mess
-                        )
-        except Exception as e:
-                logging.error(f"Ошибка отправки заявки в тему в супергруппе: {e}")        
-        for user_notified_id in admin_and_mechanic_ids:
+        # Сохранение в Google Sheets
+        result_sheets = await save_claim(id=application_id, restaurant=restaurant, task=application_text, file_id=photo_id)
+        if result_sheets and result_sheets.get('success'):
+            logger.info("✅ Заявка добавлена в Google Sheets")
+        else:
+            error_msg = result_sheets.get('error', 'Неизвестная ошибка') if result_sheets else 'Нет ответа'
+            logger.error(f"❌ Ошибка при добавлении в таблицу: {error_msg}")
+        
+        # Отправка уведомлений техникам и админам
+        for user_id in admin_and_mechanic_ids:
+            mess = (f"🎇 Новая заявка!\n\n"
+                    f"ID: {application_id}\n"
+                    f"От: @{username}\n"
+                    f"Ресторан: {restaurant}\n\n"
+                    f"Проблема: {application_text[:500]}")
             try:
                 if photo_id and file_id:
-                    mess = f"""Заявка в работе\n
-ID заявки: {application_id}
-От: {username}
-🥩 {restaurant}
-
-📑 {application_text[:500]}""" 
-                    # Отправляем с фото
-                    await callback.message.bot.send_photo(
-                        chat_id=int(user_notified_id),
-                        photo=file_id if file_id else photo_id,
-                        reply_markup=pick_application_by_mechanic(application_id),
-                        caption=mess # Обрезаем для отображения в телеграме
+                    await bot.send_photo(
+                        chat_id=int(user_id),
+                        photo=file_id,
+                        caption=mess,
+                        reply_markup=pick_application_by_mechanic(application_id)
                     )
                 else:
-                    mess = f"""🎇 Новая заявка!
-                        
-ID заявки: {application_id}
-От: @{username}
-Ресторан: {restaurant}
-
-Проблема: {application_text[:500]}"""
-                    # Отправляем без фото
-                    await callback.message.bot.send_message(
-                        chat_id=int(user_notified_id),
-                        reply_markup=pick_application_by_mechanic(application_id),
-                        text=mess # Обрезаем для отображения в телеграме
+                    await bot.send_message(
+                        chat_id=int(user_id),
+                        text=mess,
+                        reply_markup=pick_application_by_mechanic(application_id)
                     )
-                    
             except Exception as e:
-                logging.error(f"Ошибка отправки заявки технику {user_notified_id}: {e}")
-            
+                logging.error(f"Ошибка отправки технику {user_id}: {e}")
+        
+        # (Опционально) отправка в супергруппу с топиком
+        # thread_id = dict_of_topics.get(restaurant)  # безопасно
+        # if thread_id:
+        #     await bot.send_message(chat_id=GROUP_ID, message_thread_id=thread_id, text=mess)
+        
+        # ✅ Редактируем исходное сообщение – убираем кнопки
+        await callback.message.edit_text(
+            "✅ Заявка успешно отправлена техникам.",
+            reply_markup=None
+        )
+        
     elif callback.data == "cancelled_writing_application":
-        await callback.message.answer("❌ Заявка отменена")
+        await callback.answer("❌ Заявка отменена")
+        await callback.message.edit_text("Заявка отменена.", reply_markup=None)
     
     await state.clear()
     await state.set_state(MenuStates.main_menu)
@@ -185,7 +166,7 @@ async def process_sent_problem(message: Message, state: FSMContext):
         buttons_message = await message.answer(text=LEXICON["text_added"],reply_markup=application_writing_complete())
         
     if message.content_type == "photo":
-        photo_id = message.photo[0].file_id
+        photo_id = message.photo[-1].file_id
         await state.update_data(photo_id=photo_id)
         buttons_message = await message.answer(LEXICON["photo_added"],reply_markup=application_writing_complete())
         if message.caption:
@@ -197,3 +178,56 @@ async def process_sent_problem(message: Message, state: FSMContext):
 async def process_sent_problem(message: Message, state: FSMContext):
     logging.info(f"Current state: {await state.get_state()}")
     await message.answer(LEXICON["incorrect_content_type_in_application"])
+
+
+@application_writing.message(F.photo, F.caption.startswith("#заявка"), F.chat.type == ChatType.GROUP)
+async def correct_application_handler(message: Message, bot: Bot):
+    if message.caption is None:
+        await message.reply("Добавьте подпись к фото с заявкой!")
+        return
+
+    photo_id = message.photo[-1].file_id  # самое большое фото
+    text = message.caption
+    isClaimed, restaurant, task_text, error_text = validate_claim(text)
+
+
+    user_id = message.from_user.id
+    if isClaimed:
+        file_id = photo_id
+        image_data = None
+
+        try:
+            image_bytes_io = await bot.download(photo_id)   # получаем BytesIO
+            image_data = image_bytes_io.getvalue()         # преобразуем в bytes
+        except Exception as e:
+            logging.error(f"Ошибка загрузки фото в бд: {e}")
+            await message.reply("⚠️ Не удалось загрузить фото, заявка не сохранена.")
+            return
+
+        application_id = create_application(
+            user_created_id=str(user_id),
+            description=task_text,
+            restaurant=restaurant,
+            image_data=image_data,
+            file_id=file_id,
+        )
+        await message.reply(f"✅ Заявка из {restaurant} отправлена!")
+
+            # Отправка в гугл щитс
+        result_sheets = await save_claim(id=application_id,restaurant=restaurant, task=task_text, file_id=photo_id)
+        if result_sheets and result_sheets.get('success'):
+            logger.info("✅ В таблицу добавлена новая заявка с фото - через беседу")
+        else:
+            error_msg = result_sheets.get('error', 'Неизвестная ошибка') if result_sheets else 'Нет ответа'
+            logger.error(f"❌ Ошибка при добавлении заявки в таблицу: {error_msg}")
+            await message.reply("⚠️ Заявка принята, но возникла ошибка при сохранении в таблицу. Администратор уведомлён.")
+
+    else:
+        await message.reply(f"❌ {error_text}")
+        return
+
+
+
+@application_writing.message(F.text.startswith("#заявка"), ~F.photo, F.chat.type == ChatType.GROUP)
+async def incorrect_application_handler_no_photo(message: Message):
+    await message.reply("Заявку можно отправить только с фотографией!")

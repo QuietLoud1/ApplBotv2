@@ -4,12 +4,13 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 from config.config import Config,load_config
+import random
 
 
 config = load_config()
 # Конфигурация БД
 DB_PATH = config.bot.database_path_for_excel  # укажите путь к вашей БД
-restaurants = ["Duo", "Tartarbar","Азия", "Харвест", "Общая заявка","Реборн", "Француз","Перемена"]
+restaurants = ["ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕКОЛЬТЕ", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА"]
 dict_of_topics = {
     "Duo" : "71", "Tartarbar" : "73", "Азия" : "22", "Харвест" : "3", "Общая заявка" : "3", "Реборн" : "77", "Француз" : "80", "Перемена" : "82"
 }
@@ -47,7 +48,7 @@ def init_db():
         # Создание таблицы applications (если нужна)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS applications(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY,
                 user_created_id TEXT,
                 description TEXT,
                 date_created DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -360,42 +361,56 @@ def delete_application(application_id: int) -> bool:
         logging.getLogger(__name__).error(f"Ошибка при удалении заявки: {e}")
         return False
 
+
+def generate_unique_id(cursor, table_name="applications", id_column="id"):
+    """Генерирует уникальный 10-значный id, которого ещё нет в таблице."""
+    min_id = 1_000_000_000
+    max_id = 9_999_999_999
+    while True:
+        new_id = random.randint(min_id, max_id)
+        cursor.execute(f"SELECT 1 FROM {table_name} WHERE {id_column} = ?", (new_id,))
+        if not cursor.fetchone():
+            return new_id
+
+
 # 3. Добавить заявку в БД
 def create_application(
-    user_created_id: str, 
-    description: str, 
+    user_created_id: str,
+    description: str,
     restaurant: str,
-    file_id: str = None, 
-    image_data: bytes = None
-) -> Optional[int]:
+    mechanic_id: str = None,
+    image_data: bytes = None,
+    file_id: str = None
+) -> int:
     """
-    Создать новую заявку
-    
-    Args:
-        user_created_id: ID пользователя, создавшего заявку
-        description: Описание проблемы/задачи
-        restaurant: Ресторан
-        file_id: ID файла (например, из Telegram)
-        image_data: BLOB данные изображения
+    Вставляет новую заявку со случайным 10-значным id.
+    Возвращает сгенерированный id.
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
         
-    Returns:
-        ID созданной заявки или None в случае ошибки
-    """
-    try:
-        with get_db_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO applications (user_created_id, description, restaurant, file_id, image_data)
-                VALUES (?, ?, ?, ?, ?)
-            """, (user_created_id, description, restaurant, file_id, image_data))
-            
-            conn.commit()
-            application_id = cur.lastrowid
-            logging.getLogger(__name__).info(f"Заявка {application_id} создана")
-            return application_id
-    except sqlite3.Error as e:
-        logging.getLogger(__name__).error(f"Ошибка при создании заявки: {e}")
-        return None
+        # Генерируем уникальный id
+        new_id = generate_unique_id(cursor)
+        
+        # Вставляем запись
+        cursor.execute("""
+            INSERT INTO applications (
+                id, user_created_id, description, restaurant,
+                mechanic_id, image_data, file_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            new_id,
+            user_created_id,
+            description,
+            restaurant,
+            mechanic_id,
+            image_data,
+            file_id
+        ))
+        
+        conn.commit()
+        return new_id
 
 def accept_application(application_id: int, mechanic_id: str) -> bool:
     """

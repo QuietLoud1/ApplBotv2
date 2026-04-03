@@ -18,7 +18,8 @@ import database.database as db
 from apscheduler.triggers.cron import CronTrigger
 import pytz
 from handlers.admin_functions import admin_functions
-
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiohttp import BasicAuth
 logger = logging.getLogger(__name__)
 
 async def on_startup():
@@ -35,10 +36,13 @@ async def main():
 
     logger.info("Starting bot")
 
-    # Инициализируем бот и диспетчер
+    proxy_url = config.bot.proxy_url
+    auth = BasicAuth(login=config.bot.proxy_login, password=config.bot.proxy_password)
+    session = AiohttpSession(proxy=(proxy_url, auth))
     bot = Bot(
         token=config.bot.token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        session=session
     )
     redis = Redis(host='localhost')
     storage = RedisStorage(redis=redis)

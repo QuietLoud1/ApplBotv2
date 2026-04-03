@@ -1,4 +1,5 @@
 mechanics.db
+venv/
 .venv/
 __pycache__/
 *.py[cod]
