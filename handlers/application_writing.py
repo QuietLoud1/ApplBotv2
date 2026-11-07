@@ -211,7 +211,7 @@ async def correct_application_handler(message: Message, bot: Bot):
             image_data=image_data,
             file_id=file_id,
         )
-        await message.reply(f"✅ Заявка из {restaurant} отправлена!")
+        await message.reply(f"✅ Заявка из {restaurant.capitalize()} отправлена!")
 
             # Отправка в гугл щитс
         result_sheets = await save_claim(id=application_id,restaurant=restaurant, task=task_text, file_id=photo_id)
