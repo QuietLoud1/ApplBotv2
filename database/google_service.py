@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def validate_claim(text: str) -> tuple[bool, str, str, str]:
 
-    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕКОЛЬТЕ", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ"}
+    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕБОРН", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ"}
     """
     Проверяет, соответствует ли текст заявки требуемому формату.
     
@@ -38,7 +38,7 @@ def validate_claim(text: str) -> tuple[bool, str, str, str]:
     if not restaurant:
         return False, "", "", "Название ресторана не может быть пустым"
     
-    if restaurant not in allowed_restaurants:
+    if restaurant.upper() not in allowed_restaurants:
         return False, "", "", f"Ресторан '{restaurant}' не найден в списке допустимых"
     
     if not task:
