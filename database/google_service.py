@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def validate_claim(text: str) -> tuple[bool, str, str, str]:
 
-    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕКОЛЬТЕ", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА"}
+    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕКОЛЬТЕ", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ"}
     """
     Проверяет, соответствует ли текст заявки требуемому формату.
     

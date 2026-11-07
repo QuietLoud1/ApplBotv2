@@ -220,7 +220,6 @@ async def correct_application_handler(message: Message, bot: Bot):
         else:
             error_msg = result_sheets.get('error', 'Неизвестная ошибка') if result_sheets else 'Нет ответа'
             logger.error(f"❌ Ошибка при добавлении заявки в таблицу: {error_msg}")
-            await message.reply("⚠️ Заявка принята, но возникла ошибка при сохранении в таблицу. Администратор уведомлён.")
 
     else:
         await message.reply(f"❌ {error_text}")
