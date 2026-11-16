@@ -9,7 +9,7 @@ config: Config = load_config()
 logger = logging.getLogger(__name__)
 
 def validate_claim(text: str) -> tuple[bool, str, str, str]:
-    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕБОРН", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ", "БАМБИНА"}
+    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕБОРН", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ", "БАМБИНО"}
 
     text = text.strip()
 
