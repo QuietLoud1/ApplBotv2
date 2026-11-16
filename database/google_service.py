@@ -7,10 +7,9 @@ import logging
 
 config: Config = load_config()
 logger = logging.getLogger(__name__)
+allowed_restaurants = {restaurant.upper() for restaurant in config.restaurants}
 
 def validate_claim(text: str) -> tuple[bool, str, str, str]:
-    allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕБОРН", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ", "БАМБИНО"}
-
     text = text.strip()
 
     # 1) Старый формат со скобками: #заявка (ЛАВРАКИ) текст
@@ -87,4 +86,3 @@ async def change_application_status(restaurant: str, application_id: int, new_st
             result = await resp.json()
             logger.info(f"📬 Ответ от Apps Script (изменение статуса): {result}")
             return result
-

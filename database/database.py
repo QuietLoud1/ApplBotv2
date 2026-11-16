@@ -10,7 +10,7 @@ import random
 config = load_config()
 # Конфигурация БД
 DB_PATH = config.bot.database_path_for_excel  # укажите путь к вашей БД
-restaurants = ["ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕБОРН", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ", "БАМБИНО"]
+restaurants = config.restaurants
 dict_of_topics = {
     "Duo" : "71", "Tartarbar" : "73", "Азия" : "22", "Харвест" : "3", "Общая заявка" : "3", "Реборн" : "77", "Француз" : "80", "Перемена" : "82"
 }

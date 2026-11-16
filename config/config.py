@@ -5,6 +5,19 @@ import os
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_RESTAURANTS = (
+    "ДУО",
+    "ТАРТАР",
+    "АЗИЯ",
+    "ХАРВЕСТ",
+    "РЕБОРН",
+    "ФРАНЦУЗ",
+    "ОДЖИ",
+    "ПЕРЕМЕНА",
+    "ЛАВРАКИ",
+    "БАМБИНО",
+)
+
 
 @dataclass
 class BotSettings:
@@ -50,6 +63,7 @@ class Config:
     db: DatabaseSettings
     redis: RedisSettings
     log: LoggSettings
+    restaurants: list[str]
 
 
 def load_config(path: str | None = None) -> Config:
@@ -62,6 +76,13 @@ def load_config(path: str | None = None) -> Config:
             logger.info("Loading .env from '%s'", path)
 
     env.read_env(path)
+
+    restaurants = [
+        restaurant.strip()
+        for restaurant in env.list("RESTAURANTS", default=list(DEFAULT_RESTAURANTS))
+    ]
+    if not restaurants or any(not restaurant for restaurant in restaurants):
+        raise ValueError("RESTAURANTS must contain at least one non-empty name")
 
     token = env("BOT_TOKEN")
 
@@ -113,5 +134,6 @@ def load_config(path: str | None = None) -> Config:
         ),
         db=db,
         redis=redis,
-        log=logg_settings
+        log=logg_settings,
+        restaurants=restaurants,
 )
