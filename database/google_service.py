@@ -9,41 +9,37 @@ config: Config = load_config()
 logger = logging.getLogger(__name__)
 
 def validate_claim(text: str) -> tuple[bool, str, str, str]:
-
     allowed_restaurants: set = {"ДУО", "ТАРТАР", "АЗИЯ", "ХАРВЕСТ", "РЕБОРН", "ФРАНЦУЗ", "ОДЖИ", "ПЕРЕМЕНА", "ЛАВРАКИ", "БАМБИНА"}
-    """
-    Проверяет, соответствует ли текст заявки требуемому формату.
-    
-    Аргументы:
-        text: строка с текстом заявки.
-        allowed_restaurants: множество допустимых названий ресторанов.
-    
-    Возвращает:
-        Кортеж (is_valid, restaurant, task, error_message):
-            is_valid: bool – успешна ли проверка.
-            restaurant: str – извлечённое название ресторана (пустая строка при ошибке).
-            task: str – извлечённый текст задачи (пустая строка при ошибке).
-            error_message: str – описание ошибки (пустая строка, если is_valid=True).
-    """
-    # Регулярное выражение: #заявка, затем пробелы, (название), пробелы, текст задачи
-    pattern = r'^#заявка\s+\(([^)]+)\)\s*(.*)$'
-    match = re.match(pattern, text.strip(), flags=re.DOTALL)
-    
-    if not match:
-        return False, "", "", "Неверный формат. Должно быть: #заявка (НАЗВАНИЕ) текст проблемы"
-    
-    restaurant = match.group(1).strip()
-    task = match.group(2).strip()
-    
+
+    text = text.strip()
+
+    # 1) Старый формат со скобками: #заявка (ЛАВРАКИ) текст
+    match = re.match(r'^#заявка\s+\(([^)]+)\)\s*(.*)$', text, flags=re.DOTALL)
+    if match:
+        restaurant = match.group(1).strip()
+        task = match.group(2).strip()
+    else:
+        # 2) Новый формат без скобок: #заявка ЛАВРАКИ текст
+        #    Название ресторана — первое слово, всё после — задача
+        match = re.match(r'^#заявка\s+(\S+)(?:\s+(.*))?$', text, flags=re.DOTALL)
+        if not match:
+            return False, "", "", (
+                "Заявка не отправлена (неверный формат). Примеры:\n"
+                "  #заявка ЛАВРАКИ Текст проблемы\n"
+                "  #заявка (ЛАВРАКИ) Текст проблемы"
+            )
+        restaurant = match.group(1).strip()
+        task = (match.group(2) or "").strip()
+
     if not restaurant:
         return False, "", "", "Название ресторана не может быть пустым"
-    
+
     if restaurant.upper() not in allowed_restaurants:
         return False, "", "", f"Ресторан '{restaurant}' не найден в списке допустимых"
-    
+
     if not task:
         return False, "", "", "Текст проблемы не может быть пустым"
-    
+
     return True, restaurant, task, ""
 
 
