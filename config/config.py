@@ -64,6 +64,7 @@ class Config:
     redis: RedisSettings
     log: LoggSettings
     restaurants: list[str]
+    google_script_url: str
 
 
 def load_config(path: str | None = None) -> Config:
@@ -83,6 +84,10 @@ def load_config(path: str | None = None) -> Config:
     ]
     if not restaurants or any(not restaurant for restaurant in restaurants):
         raise ValueError("RESTAURANTS must contain at least one non-empty name")
+
+    google_script_url = env("GOOGLE_SCRIPT_URL").strip()
+    if not google_script_url:
+        raise ValueError("GOOGLE_SCRIPT_URL must not be empty")
 
     token = env("BOT_TOKEN")
 
@@ -136,4 +141,5 @@ def load_config(path: str | None = None) -> Config:
         redis=redis,
         log=logg_settings,
         restaurants=restaurants,
+        google_script_url=google_script_url,
 )

@@ -43,7 +43,6 @@ def validate_claim(text: str) -> tuple[bool, str, str, str]:
 
 
 async def save_claim(id: int, restaurant: str, task: str, file_id: str):
-    url = "https://script.google.com/macros/s/AKfycbzidNYut90GiQBZhB1XLAWKYX5DrtSSP0nVIvN5uSWW7lqnAgRrBAVaj13KqEt-So1W/exec"
     current_datetime = datetime.now().strftime("%d/%m/%Y")
 
     payload = {
@@ -55,7 +54,7 @@ async def save_claim(id: int, restaurant: str, task: str, file_id: str):
         "id": id
     }
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload) as resp:
+        async with session.post(config.google_script_url, json=payload) as resp:
             result = await resp.json()
             logger.info(f"📬 Ответ от Apps Script: {result}")
             return result
@@ -72,8 +71,6 @@ async def change_application_status(restaurant: str, application_id: int, new_st
     Возвращает:
         dict с полями success (bool) и возможно error/result
     """
-    url = "https://script.google.com/macros/s/AKfycbzidNYut90GiQBZhB1XLAWKYX5DrtSSP0nVIvN5uSWW7lqnAgRrBAVaj13KqEt-So1W/exec"
-    
     payload = {
         "action": "update_status",
         "restaurant": restaurant,
@@ -82,7 +79,7 @@ async def change_application_status(restaurant: str, application_id: int, new_st
     }
     
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload) as resp:
+        async with session.post(config.google_script_url, json=payload) as resp:
             result = await resp.json()
             logger.info(f"📬 Ответ от Apps Script (изменение статуса): {result}")
             return result
